@@ -1,11 +1,6 @@
 
 #!/bin/bash
 
-rm ../inc -rf
-mkdir -p ../inc
-rm ../lib -rf
-mkdir -p ../lib
-
 sourFolder="./"
 targetFolder="../inc/"
  
