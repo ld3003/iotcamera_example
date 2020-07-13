@@ -207,6 +207,7 @@ int NetWorkMgr::run()
             }
             break;
         case NT_STATUS_CONFIP:
+            system("echo nameserver 114.114.114.114 > /etc/resolv.conf");
             SetIfAddr("eth1", "192.168.0.11", "255.255.255.0", "192.168.0.1");
             NTStatus = NT_STATUS_READY;
             break;
