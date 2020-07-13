@@ -174,8 +174,6 @@ int SetIfAddr2(char *ifname, unsigned int Ipaddr, unsigned int mask, unsigned in
     SetIfAddr(ifname, A, B, C);
 }
 
-
-
 NetWorkMgr::NetWorkMgr()
 {
     NTStatus = NT_STATUS_INIT;
@@ -190,30 +188,32 @@ NetWorkMgr::~NetWorkMgr()
 int NetWorkMgr::run()
 {
 
-    for(;;)
+    for (;;)
     {
-        switch(NTStatus)
+        switch (NTStatus)
         {
-            case NT_STATUS_INIT:
-                NTStatus = NT_STATUS_CHECKIF;
-                break;
-            case NT_STATUS_CHECKIF:
-                if (net_detect("eth1") != 1)
-                {
-                    mySystem("ifconfig eth1 up");
-                    sleep(1);
-                }else{
-                    NTStatus = NT_STATUS_CONFIP;
-                }
-                break;
-            case NT_STATUS_CONFIP:
-                SetIfAddr("eth1","192.168.0.11","255.255.255.0","192.168.0.1");
-                NTStatus = NT_STATUS_READY;
-                break;
-
-            case  NT_STATUS_READY:
+        case NT_STATUS_INIT:
+            NTStatus = NT_STATUS_CHECKIF;
+            break;
+        case NT_STATUS_CHECKIF:
+            if (net_detect("eth1") != 1)
+            {
+                mySystem("ifconfig eth1 up");
                 sleep(1);
-                break;
+            }
+            else
+            {
+                NTStatus = NT_STATUS_CONFIP;
+            }
+            break;
+        case NT_STATUS_CONFIP:
+            SetIfAddr("eth1", "192.168.0.11", "255.255.255.0", "192.168.0.1");
+            NTStatus = NT_STATUS_READY;
+            break;
+
+        case NT_STATUS_READY:
+            sleep(1);
+            break;
         }
     }
     return 0;

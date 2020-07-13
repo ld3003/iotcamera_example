@@ -31,6 +31,8 @@
 
 #include "rtsp_server.h"
 
+#include "wifimgr.h"
+
 static int writetsdata(unsigned char *data, int len)
 {
 	//printf("send pack\n");
@@ -45,7 +47,7 @@ static int rtmp_write_a(unsigned char *buf, int len, int pts)
 }
 static int rtmp_write_v(unsigned char *buf, int len, int pts)
 {
-	RUN_TEST;
+	//RUN_TEST;
 	getBandwidth(len);
 	rtmp.writeH264RawData(buf, len, pts);
 	return 0;
@@ -80,7 +82,7 @@ static int all_write_a(unsigned char *buf, int len, int pts)
 
 static int rtsp_write_v(unsigned char *buf, int len, int pts)
 {
-	rtspSrv->rtspsendFrame(buf,len);
+	rtspSrv->rtspsendFrame(buf, len);
 	return 0;
 }
 static int rtsp_write_a(unsigned char *buf, int len, int pts)
@@ -107,7 +109,10 @@ int main(int argc, char **argv)
 
 	//启动网络管理
 	nmgr = new NetWorkMgr();
-	//nmgr->start();
+	nmgr->start();
+
+	WIFIMGR *wmgr = new WIFIMGR();
+	wmgr->hostapd(0, 0);
 
 	//创建ir通道
 	irchn = new IRCHANNEL();
@@ -124,7 +129,7 @@ int main(int argc, char **argv)
 	//初始化音视频编码
 	initavenc();
 
-#if 0
+#if 1
 	mwrtmp.write_a = rtmp_write_a;
 	mwrtmp.write_v = rtmp_write_v;
 	mwrtmp.chn = 1;
@@ -141,38 +146,15 @@ int main(int argc, char **argv)
 #if 1
 	mwrtsp.write_a = rtsp_write_a;
 	mwrtsp.write_v = rtsp_write_v;
-	mwrtsp.chn = 2;
+	mwrtsp.chn = 0;
 	register_mw(&mwrtsp);
 #endif
 
+
 	//启动rtmp
 	rtmp.setUrl("rtmp://easy-iot.cc:1935/live/livestream");
-	//rtmp.start();
+	rtmp.start();
 
-	RUN_TEST;
-	printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-
-#if 0
-	for (;;)
-	{
-		rtmp.startPush();
-		av_init();
-		av_start();
-		sleep(5);
-		av_ctrl(0);
-		rtmp.stopPush();
-		sleep(5);
-	}
-
-	for (;;)
-	{
-		rtmp.startPush();
-		sleep(5);
-		rtmp.stopPush();
-		sleep(5);
-	}
-
-#endif
 
 	//创建RTP会话
 	mrtp = new rtp("47.104.166.126",
@@ -184,12 +166,17 @@ int main(int argc, char **argv)
 
 	pause_write(1);
 	av_start();
-	irchn->start();
+	//irchn->start();
 
 	rtspSrv = new RTSPServer();
 	rtspSrv->start();
 
+	rtmp.startPush();
 	pause_write(0);
+	for (;;)
+	{
+		sleep(1);
+	};
 
 #if 1
 

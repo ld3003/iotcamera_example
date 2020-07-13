@@ -173,7 +173,7 @@ int CRtmpPush::run()
 #endif
 
 
-		printf("status %d run_status %d \n",status,run_status);
+		//printf("status %d run_status %d \n",status,run_status);
 
 		switch (status)
 		{

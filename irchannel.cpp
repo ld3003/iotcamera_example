@@ -53,7 +53,6 @@ int IRCHANNEL::run()
         v4l2_read_frame(&camera, (void **)(&frame_ptr), &frame_len);
 
         
-
         struct timeval t1, t2;
         time_consuming_start(&t1, &t2);
         if (frame_len <= 0)
@@ -102,12 +101,12 @@ int IRCHANNEL::run()
                 //}
             }
 
-            time_consuming_print("uvc_cb", &t1, &t2);
+            //time_consuming_print("uvc_cb", &t1, &t2);
         }
 
         free(frame_ptr);
 
-        time_consuming_print("readfrm", &rt1, &rt2);
+        //time_consuming_print("readfrm", &rt1, &rt2);
     }
 
     delete tusb;
