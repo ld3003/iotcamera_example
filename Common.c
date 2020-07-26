@@ -437,3 +437,197 @@ float time_consuming_print(char *strPuts, struct timeval *gTpstart, struct timev
 
     return timeuse;
 }
+
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+
+#define VMRSS_LINE 21// VMRSS所在行, 注:根据不同的系统,位置可能有所区别.
+#define pid_t int
+ #define BUF_SIZE 1024
+
+ 
+int get_memory_by_pid(pid_t p)
+{
+    FILE *fd;
+    char name[32], line_buff[256] = {0}, file[64] = {0};
+    int i, vmrss = 0;
+ 
+ 
+    sprintf(file, "/proc/%d/status", p);
+    // 以R读的方式打开文件再赋给指针fd
+    fd = fopen(file, "r");
+    if(fd==NULL)
+    {
+        return -1;
+    }
+ 
+    // 读取VmRSS这一行的数据
+    for (i = 0; i < 40; i++)
+    {
+        if (fgets(line_buff, sizeof(line_buff), fd) == NULL)
+        {
+            break;
+        }
+        if (strstr(line_buff, "VmRSS:") != NULL)
+        {
+            sscanf(line_buff, "%s %d", name, &vmrss);
+            break;
+        }
+    }
+ 
+    fclose(fd);
+ 
+    return vmrss;
+}
+
+struct pidlist
+{
+    int pid[32];
+    int cnt;
+};
+//从名称获取pid
+void getPidByName(char *task_name, struct pidlist *plist)
+{
+    DIR *dir;
+    struct dirent *ptr;
+    FILE *fp;
+    char filepath[50];      //大小随意，能装下cmdline文件的路径即可
+    char cur_task_name[50]; //大小随意，能装下要识别的命令行文本即可
+    char buf[BUF_SIZE];
+    dir = opendir("/proc"); //打开路径
+    plist->cnt = 0;
+    if (NULL != dir)
+    {
+        while ((ptr = readdir(dir)) != NULL) //循环读取路径下的每一个文件/文件夹
+        {
+            //如果读取到的是"."或者".."则跳过，读取到的不是文件夹名字也跳过
+            if ((strcmp(ptr->d_name, ".") == 0) || (strcmp(ptr->d_name, "..") == 0))
+                continue;
+            if (DT_DIR != ptr->d_type)
+                continue;
+
+            sprintf(filepath, "/proc/%s/status", ptr->d_name); //生成要读取的文件的路径
+            fp = fopen(filepath, "r");                         //打开文件
+            if (NULL != fp)
+            {
+                if (fgets(buf, BUF_SIZE - 1, fp) == NULL)
+                {
+                    fclose(fp);
+                    continue;
+                }
+                sscanf(buf, "%*s %s", cur_task_name);
+
+                //如果文件内容满足要求则打印路径的名字（即进程的PID）
+                if (!strcmp(task_name, cur_task_name))
+                {
+                    sscanf(ptr->d_name, "%d", &plist->pid[plist->cnt]);
+                    plist->cnt++;
+                    printf("PID:  %s %d %d\n", ptr->d_name, plist->pid[plist->cnt - 1], plist->cnt);
+                }
+
+                fclose(fp);
+            }
+        }
+        closedir(dir); //关闭路径
+    }
+}
+//从pid得到名字
+void getNameByPid(pid_t pid, char *task_name)
+{
+    char proc_pid_path[BUF_SIZE];
+    char buf[BUF_SIZE];
+
+    sprintf(proc_pid_path, "/proc/%d/status", pid);
+    FILE *fp = fopen(proc_pid_path, "r");
+    if (NULL != fp)
+    {
+        if (fgets(buf, BUF_SIZE - 1, fp) == NULL)
+        {
+            fclose(fp);
+        }
+        fclose(fp);
+        sscanf(buf, "%*s %s", task_name);
+    }
+}
+
+int getiotcameramem()
+{
+    int i = 0;
+
+    char task_name[50];
+    struct pidlist iotcamera_plist;
+    struct pidlist ccdr_plist;
+
+    getPidByName("iotcamera", &iotcamera_plist);
+    //getPidByName("ccdr", &ccdr_plist);
+
+    for (i = 0; i < ccdr_plist.cnt; i++)
+    {
+        int retval = get_memory_by_pid(iotcamera_plist.pid[i]);//kill(ccdr_plist.pid[i], SIGKILL);
+        return retval;
+
+    }
+
+    return 0;
+
+}
+
+int get_total_mem()
+{
+    const char *file = "/proc/meminfo";// 文件名
+    FILE *fd;
+ 
+    // 定义文件指针fd
+    char line_buff[256] = {0}; // 读取行的缓冲区
+ 
+ 
+    fd = fopen (file, "r"); // 以R读的方式打开文件再赋给指针fd
+    // 获取memtotal:总内存占用大小
+    int i;
+    char name[32];// 存放项目名称
+    int memtotal;// 存放内存峰值大小
+    char *ret = fgets (line_buff, sizeof(line_buff), fd);// 读取memtotal这一行的数据,memtotal在第1行
+    sscanf (line_buff, "%s %d", name, &memtotal);
+    fprintf (stderr, "====%s：%d====\n", name, memtotal);
+    fclose(fd);
+ 
+    // 关闭文件fd
+    return memtotal;
+}
+
+#define SYS_MEM_NAME_LEN 20
+#define SYS_MEM_BUFF_LEN 256
+#define SYS_100_PERSENT 100
+int get_sysMemUsage()
+{
+    FILE *fd;
+    char buff[SYS_MEM_BUFF_LEN];
+    double mem_used_rate;
+    char name01[SYS_MEM_NAME_LEN];
+    unsigned long mem_total;
+    char name02[SYS_MEM_NAME_LEN];
+
+    char name11[SYS_MEM_NAME_LEN];
+    unsigned long mem_free;
+    char name12[SYS_MEM_NAME_LEN];
+
+    fd = fopen ("/proc/meminfo", "r");  
+
+    fgets (buff, sizeof(buff), fd);  
+
+    sscanf (buff, "%s %lu %s\n", name01, &mem_total, name02);  
+
+    fgets (buff, sizeof(buff), fd); 
+
+    sscanf (buff, "%s %lu %s\n", name11, &mem_free, name12); 
+
+    mem_used_rate = (1.0 - (double)mem_free/(double)mem_total) * SYS_100_PERSENT;
+
+    fclose(fd);
+
+    return mem_free;
+}

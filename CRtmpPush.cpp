@@ -147,7 +147,7 @@ void CRtmpPush::stopPush()
 		break;
 	}
 
-	printf("stoppush status %d run_status %d \n",status,run_status);
+	printf("stoppush status %d run_status %d \n", status, run_status);
 }
 
 void CRtmpPush::startPush()
@@ -172,7 +172,6 @@ int CRtmpPush::run()
 		pthread_mutex_lock(&statusmutex);
 #endif
 
-
 		//printf("status %d run_status %d \n",status,run_status);
 
 		switch (status)
@@ -195,6 +194,7 @@ int CRtmpPush::run()
 			else
 			{
 				printf("connect err \n");
+				deinit();
 				sleep(2);
 			}
 

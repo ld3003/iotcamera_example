@@ -60,6 +60,10 @@ extern "C"
 
     int getBandwidth(int len);
 
+    int getiotcameramem();
+    int get_total_mem();
+    int get_sysMemUsage();
+
 #ifdef __cplusplus
 }
 #endif

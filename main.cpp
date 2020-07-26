@@ -41,20 +41,18 @@ static int writetsdata(unsigned char *data, int len)
 
 static int rtmp_write_a(unsigned char *buf, int len, int pts)
 {
-	//getBandwidth(len);
-	//rtmp.writeAACRawData(buf, len, pts);
+	getBandwidth(len);
+	rtmp.writeAACRawData(buf, len, pts);
 	return 0;
 }
 static int rtmp_write_v(unsigned char *buf, int len, int pts)
 {
-	//RUN_TEST;
 	getBandwidth(len);
 	rtmp.writeH264RawData(buf, len, pts);
 	return 0;
 }
 static int rtpts_write_a(unsigned char *buf, int len, int pts)
 {
-	//RUN_TEST;
 	//AUDIO_SAMPLE_RATE_24000
 	//rtmp.writeAACRawData(buf,len,pts);
 	getBandwidth(len);
@@ -65,7 +63,6 @@ static int rtpts_write_a(unsigned char *buf, int len, int pts)
 static int rtpts_write_v(unsigned char *buf, int len, int pts)
 {
 	//printf("################\n");
-	//RUN_TEST;
 	getBandwidth(len);
 	WriteBuf2TsFile(&ts_session, 25, pts, 1, buf, len, 0);
 	return 0;
@@ -111,8 +108,10 @@ int main(int argc, char **argv)
 	nmgr = new NetWorkMgr();
 	nmgr->start();
 
+	//for(;;){sleep(1);}
+
 	WIFIMGR *wmgr = new WIFIMGR();
-	wmgr->hostapd(0, 0);
+	wmgr->hostapd_ethdhcpd(0, 0);
 
 	//创建ir通道
 	irchn = new IRCHANNEL();
@@ -150,12 +149,11 @@ int main(int argc, char **argv)
 	register_mw(&mwrtsp);
 #endif
 
-
 	//启动rtmp
 	rtmp.setUrl("rtmp://easy-iot.cc:1935/live/livestream");
 	rtmp.start();
 
-
+#if 0
 	//创建RTP会话
 	mrtp = new rtp("47.104.166.126",
 				   8900,
@@ -163,18 +161,24 @@ int main(int argc, char **argv)
 				   (double)(1.0 / 90000.0));
 
 	mrtp->setPayloadtype(encode_mp2t);
-
+#endif
 	pause_write(1);
 	av_start();
 	//irchn->start();
+
 
 	rtspSrv = new RTSPServer();
 	rtspSrv->start();
 
 	rtmp.startPush();
+
 	pause_write(0);
+
+
 	for (;;)
 	{
+
+		printf("iotcamera mem %d %d\n", getiotcameramem(), get_sysMemUsage());
 		sleep(1);
 	};
 
@@ -197,7 +201,7 @@ int main(int argc, char **argv)
 
 		mwrtmp.write_a = rtmp_write_a;
 		mwrtmp.write_v = rtmp_write_v;
-		mwrtmp.chn = 2;
+		mwrtmp.chn = 1;
 		//register_mw(&mwrtmp);
 		rtmp.startPush();
 		pause_write(0);
