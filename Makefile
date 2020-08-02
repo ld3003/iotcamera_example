@@ -41,11 +41,11 @@ LDFLAGS = $(LIBS)
 INCDIRS = ./
 
 CFLAGS += -I$(INCDIRS)
-CFLAGS += -I../iotcameralib/
+CFLAGS += -I./IOTCAMSDK/inc
 
 
 
-LDFLAGS +=  -lcurl -L../iotcameralib/ -L./   -lpthread  -lopencv_core   -lopencv_imgproc -lturbojpeg -lm  -lfreetype  -liotcamera  -lpaho-mqtt3a -lpaho-mqtt3c  -lmpi -lsecurec
+LDFLAGS +=  -lcurl -L./IOTCAMSDK/lib -L./   -lpthread  -lopencv_core   -lopencv_imgproc -lturbojpeg -lm  -lfreetype  -liotcamera  -lpaho-mqtt3a -lpaho-mqtt3c  -lmpi -lsecurec
 
 
 

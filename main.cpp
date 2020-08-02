@@ -89,11 +89,56 @@ static int rtsp_write_a(unsigned char *buf, int len, int pts)
 
 HI_S32 GetFrameBlkInfo(VIDEO_FRAME_INFO_S *stVideoFrameInfo);
 
+#define NETWORK_4GLTE 0
+#define NETWORK_WIFIAP 1
+#define NETWORK_WIFISTA 2
+
+#define MEDIA_RTSP 0
+#define MEDIA_RTMP 1
+#define MEDIA_AVCHAT 2
+
+static char rtmpurl[256];
+static char wifissid[32];
+static char wifipass[32];
+static char rtphost[32];
+static char rtpport[32];
+static unsigned networkmod = NETWORK_WIFIAP;
+static unsigned mediamod = MEDIA_RTSP;
+
+static int readInifile()
+{
+#define CONFIG_INIT_FILE_PATH "/SDCARD/iotcamcfg.ini"
+
+	char __tmp[32];
+	GetProfileString(CONFIG_INIT_FILE_PATH, "GENERAL", "NETWORKMOD", __tmp);
+	sscanf(__tmp, "%d", networkmod);
+	GetProfileString(CONFIG_INIT_FILE_PATH, "GENERAL", "MEDIAMOD", __tmp);
+	sscanf(__tmp, "%d", mediamod);
+	GetProfileString(CONFIG_INIT_FILE_PATH, "GENERAL", "RTMPURL", rtmpurl);
+	GetProfileString(CONFIG_INIT_FILE_PATH, "GENERAL", "RTPPORT", rtpport);
+	GetProfileString(CONFIG_INIT_FILE_PATH, "GENERAL", "RTPHOST", rtphost);
+	GetProfileString(CONFIG_INIT_FILE_PATH, "GENERAL", "WIFISSID", wifissid);
+	GetProfileString(CONFIG_INIT_FILE_PATH, "GENERAL", "WIFIPASS", wifipass);
+
+	printf("NETWORKMOD %d\n", networkmod);
+	printf("MEDIAMOD %d\n", mediamod);
+
+	printf("WIFISSID %s\n", wifissid);
+	printf("WIFIPASS %s\n", wifipass);
+
+	printf("RTMPURL %s\n", rtmpurl);
+
+	printf("RTPHOST %s\n", rtpport);
+	printf("RTPPORT %s\n", rtpport);
+}
+
 int main(int argc, char **argv)
 {
 
 	int ret;
 	struct MEDIA_WRITE mwrtp, mwrtmp, mwrtsp;
+
+	readInifile();
 	//创建异步操作
 	create_consumer();
 
@@ -104,16 +149,24 @@ int main(int argc, char **argv)
 	spu2 = new SerialPortU2();
 	spu2->start();
 
-	//启动网络管理
-	nmgr = new NetWorkMgr();
-	nmgr->start();
+	//根据配置模式来设置网络配置
+	switch (networkmod)
+	{
+	case NETWORK_WIFIAP:
+		wmgr = new WIFIMGR();
+		wmgr->hostapd_ethdhcpd(0, 0);
+		break;
+	case NETWORK_4GLTE:
+		nmgr = new NetWorkMgr();
+		nmgr->start();
+		break;
+	case NETWORK_WIFISTA:
+		wmgr = new WIFIMGR();
+		wmgr->sta_eth(wifissid, wifipass);
+		break;
+	}
 
-	//for(;;){sleep(1);}
-
-	WIFIMGR *wmgr = new WIFIMGR();
-	wmgr->hostapd_ethdhcpd(0, 0);
-
-	//创建ir通道
+	//创建USB编码通道
 	irchn = new IRCHANNEL();
 
 	//初始化TS会话
@@ -128,30 +181,94 @@ int main(int argc, char **argv)
 	//初始化音视频编码
 	initavenc();
 
-#if 1
+#if 0
+	// 设置rtmp码流回调函数和通道
 	mwrtmp.write_a = rtmp_write_a;
 	mwrtmp.write_v = rtmp_write_v;
 	mwrtmp.chn = 1;
 	register_mw(&mwrtmp);
+
 #endif
 
 #if 0
+	//设置RTP码流回调函数和通道
 	mwrtp.write_a = rtpts_write_a;
 	mwrtp.write_v = rtpts_write_v;
 	mwrtp.chn = 1;
 	register_mw(&mwrtp);
 #endif
 
-#if 1
-	mwrtsp.write_a = rtsp_write_a;
-	mwrtsp.write_v = rtsp_write_v;
-	mwrtsp.chn = 0;
-	register_mw(&mwrtsp);
-#endif
+	if (mediamod == MEDIA_RTSP)
+	{
+		//设置rtsp码流回调函数和通道
+		mwrtsp.write_a = rtsp_write_a;
+		mwrtsp.write_v = rtsp_write_v;
+		mwrtsp.chn = 0; //使用通道0的1080p码流
+		register_mw(&mwrtsp);
+
+		pause_write(1);
+		av_start();
+		rtspSrv = new RTSPServer();
+		rtspSrv->start();
+		rtmp.startPush();
+		pause_write(0);
+
+		for (;;)
+		{
+			sleep(1);
+		}
+	}
+
+	if (mediamod == MEDIA_RTMP)
+	{
+
+		mwrtmp.write_a = rtmp_write_a;
+		mwrtmp.write_v = rtmp_write_v;
+		mwrtmp.chn = 1; //使用通道1的560p码流
+		register_mw(&mwrtmp);
+
+		rtmp.setUrl(rtmpurl);
+		rtmp.start();
+
+		pause_write(1);
+		av_start();
+		rtmp.startPush();
+		pause_write(0);
+		for (;;)
+		{
+			sleep(1);
+		}
+	}
+
+	if (mediamod == MEDIA_AVCHAT)
+	{
+		int __port;
+		sscanf(rtpport, "%d", &__port);
+		mrtp = new rtp(rtphost,
+					   __port,
+					   44100,
+					   (double)(1.0 / 90000.0));
+
+		mrtp->setPayloadtype(encode_mp2t);
+
+		mwrtp.write_a = rtpts_write_a;
+		mwrtp.write_v = rtpts_write_v;
+		mwrtp.chn = 1; //使用通道1的560p码流
+		register_mw(&mwrtmp);
+
+		pause_write(1);
+		av_start();
+		pause_write(0);
+
+		for (;;)
+		{
+			mrtp->readloop();
+		}
+	}
+
+#if 0
 
 	//启动rtmp
-	rtmp.setUrl("rtmp://easy-iot.cc:1935/live/livestream");
-	rtmp.start();
 
 #if 0
 	//创建RTP会话
@@ -165,15 +282,6 @@ int main(int argc, char **argv)
 	pause_write(1);
 	av_start();
 	//irchn->start();
-
-
-	rtspSrv = new RTSPServer();
-	rtspSrv->start();
-
-	rtmp.startPush();
-
-	pause_write(0);
-
 
 	for (;;)
 	{
@@ -273,6 +381,6 @@ int main(int argc, char **argv)
 	{
 		mrtp->readloop();
 	}
-
+#endif
 	return 0;
 }

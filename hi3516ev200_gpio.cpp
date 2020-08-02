@@ -58,6 +58,8 @@ int hi3516ev200_gpio_out(unsigned int gpio_chip_num, unsigned int gpio_offset_nu
     char buf[10];
     unsigned int gpio_num;
     gpio_num = gpio_chip_num * 8 + gpio_offset_num;
+
+    //导出
     sprintf(file_name, "/sys/class/gpio/export");
     fp = fopen(file_name, "w");
     if (fp == NULL)
@@ -67,6 +69,8 @@ int hi3516ev200_gpio_out(unsigned int gpio_chip_num, unsigned int gpio_offset_nu
     }
     fprintf(fp, "%d", gpio_num);
     fclose(fp);
+
+    //方向
     sprintf(file_name, "/sys/class/gpio/gpio%d/direction", gpio_num);
     fp = fopen(file_name, "rb+");
     if (fp == NULL)
@@ -76,6 +80,8 @@ int hi3516ev200_gpio_out(unsigned int gpio_chip_num, unsigned int gpio_offset_nu
     }
     fprintf(fp, "out");
     fclose(fp);
+
+    //设置
     sprintf(file_name, "/sys/class/gpio/gpio%d/value", gpio_num);
     fp = fopen(file_name, "rb+");
     if (fp == NULL)
@@ -92,6 +98,8 @@ int hi3516ev200_gpio_out(unsigned int gpio_chip_num, unsigned int gpio_offset_nu
     printf("%s: gpio%d_%d = %s\n", __func__,
            gpio_chip_num, gpio_offset_num, buf);
     fclose(fp);
+
+    //关闭
     sprintf(file_name, "/sys/class/gpio/unexport");
     fp = fopen(file_name, "w");
     if (fp == NULL)
