@@ -89,9 +89,10 @@ static int rtsp_write_a(unsigned char *buf, int len, int pts)
 
 HI_S32 GetFrameBlkInfo(VIDEO_FRAME_INFO_S *stVideoFrameInfo);
 
-#define NETWORK_4GLTE 0
-#define NETWORK_WIFIAP 1
+#define NETWORK_4GLTE 0				//4g网络
+#define NETWORK_WIFIAP 1			//WIFIAP
 #define NETWORK_WIFISTA 2
+
 
 #define MEDIA_RTSP 0
 #define MEDIA_RTMP 1
@@ -167,7 +168,7 @@ int main(int argc, char **argv)
 	}
 
 	//创建USB编码通道
-	irchn = new IRCHANNEL();
+	//irchn = new IRCHANNEL();
 
 	//初始化TS会话
 	memset(&ts_session, 0x0, sizeof(ts_session));
